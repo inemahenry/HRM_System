@@ -19,6 +19,12 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_MANAGER','ROLE_RECEPTIONIST')")
+    public ResponseEntity<List<Payment>> findAll() {
+        return ResponseEntity.ok(paymentService.findAll());
+    }
+
     @GetMapping("/guest/{guestId}")
     @PreAuthorize("hasAnyRole('ROLE_MANAGER','ROLE_RECEPTIONIST')")
     public ResponseEntity<List<Payment>> findByGuestId(@PathVariable Long guestId) {

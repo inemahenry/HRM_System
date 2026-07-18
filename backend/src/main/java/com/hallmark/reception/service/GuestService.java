@@ -10,5 +10,7 @@ public interface GuestService {
     Guest findById(Long id);
     Guest create(GuestRequestDto request);
     Guest update(Long id, GuestRequestDto request);
+    Guest checkIn(Long id, GuestRequestDto request);
+    Guest checkOut(Long id);
     void delete(Long id);
 }

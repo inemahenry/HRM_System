@@ -43,6 +43,18 @@ public class GuestController {
         return ResponseEntity.ok(guestService.update(id, request));
     }
 
+    @PostMapping("/{id}/check-in")
+    @PreAuthorize("hasAnyRole('ROLE_MANAGER','ROLE_RECEPTIONIST')")
+    public ResponseEntity<Guest> checkIn(@PathVariable Long id, @RequestBody(required = false) GuestRequestDto request) {
+        return ResponseEntity.ok(guestService.checkIn(id, request));
+    }
+
+    @PostMapping("/{id}/check-out")
+    @PreAuthorize("hasAnyRole('ROLE_MANAGER','ROLE_RECEPTIONIST')")
+    public ResponseEntity<Guest> checkOut(@PathVariable Long id) {
+        return ResponseEntity.ok(guestService.checkOut(id));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ROLE_MANAGER')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

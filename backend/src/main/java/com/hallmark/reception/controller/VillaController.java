@@ -21,7 +21,19 @@ public class VillaController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ROLE_MANAGER','ROLE_RECEPTIONIST')")
-    public ResponseEntity<List<Villa>> findAll() {
+    public ResponseEntity<List<Villa>> findAll(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean rentable,
+            @RequestParam(required = false) String search) {
+        if (Boolean.TRUE.equals(rentable)) {
+            return ResponseEntity.ok(villaService.findAvailable());
+        }
+        if (status != null && !status.isBlank()) {
+            return ResponseEntity.ok(villaService.findByStatus(status));
+        }
+        if (search != null && !search.isBlank()) {
+            return ResponseEntity.ok(villaService.search(search));
+        }
         return ResponseEntity.ok(villaService.findAll());
     }
 
@@ -41,6 +53,18 @@ public class VillaController {
     @PreAuthorize("hasRole('ROLE_MANAGER')")
     public ResponseEntity<Villa> update(@PathVariable Long id, @Valid @RequestBody VillaRequestDto request) {
         return ResponseEntity.ok(villaService.update(id, request));
+    }
+
+    @PostMapping("/{id}/clean")
+    @PreAuthorize("hasAnyRole('ROLE_MANAGER','ROLE_RECEPTIONIST')")
+    public ResponseEntity<Villa> markCleaning(@PathVariable Long id) {
+        return ResponseEntity.ok(villaService.markCleaning(id));
+    }
+
+    @PostMapping("/{id}/vacant")
+    @PreAuthorize("hasAnyRole('ROLE_MANAGER','ROLE_RECEPTIONIST')")
+    public ResponseEntity<Villa> markVacant(@PathVariable Long id) {
+        return ResponseEntity.ok(villaService.markVacant(id));
     }
 
     @DeleteMapping("/{id}")

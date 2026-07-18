@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface PaymentService {
     List<Payment> findByGuestId(Long guestId);
+    List<Payment> findAll();
     Payment create(PaymentRequestDto request);
 }

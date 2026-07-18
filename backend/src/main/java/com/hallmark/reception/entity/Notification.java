@@ -6,41 +6,38 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
-@Table(name = "villas")
+@Table(name = "notifications")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Villa {
+public class Notification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String number;
+    @Column(nullable = false)
+    private String title;
 
     @Column(nullable = false)
-    private String status;
+    private String message;
 
     @Column(nullable = false)
-    private boolean active = true;
-
-    @Column(nullable = false)
-    private boolean rentable = true;
-
-    private Long guestId;
-
-    private String guestName;
-
-    private Long primaryTenantId;
-
-    private String primaryTenantName;
-
-    private String checkOutDate;
-
     private String type;
 
-    private String notes;
+    private Long entityId;
+
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }

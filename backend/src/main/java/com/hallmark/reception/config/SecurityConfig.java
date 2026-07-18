@@ -36,7 +36,22 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                // Authentication endpoints
+                                "/api/auth/**",
+                                
+                                // Actuator endpoints (health, metrics, etc.)
+                                "/actuator/**",
+                                "/actuator/health/**",
+                                
+                                // Swagger UI endpoints
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                
+                                // OpenAPI documentation
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
