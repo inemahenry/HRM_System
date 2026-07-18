@@ -6,13 +6,12 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
-public class RegisterRequestDto {
-    @NotBlank
+public class CreateUserRequestDto {
+
+    private String fullName;
+
     private String username;
 
-    @NotBlank
     private String password;
 
-    @NotNull
-    private UserRole role;
 }

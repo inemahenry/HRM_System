@@ -3,8 +3,8 @@ package com.hallmark.reception.service.impl;
 import com.hallmark.reception.dto.AuthResponseDto;
 import com.hallmark.reception.dto.LoginRequestDto;
 import com.hallmark.reception.dto.RegisterRequestDto;
-import com.hallmark.reception.entity.Role;
 import com.hallmark.reception.entity.User;
+import com.hallmark.reception.entity.UserRole;
 import com.hallmark.reception.exception.ApiException;
 import com.hallmark.reception.repository.UserRepository;
 import com.hallmark.reception.security.JwtService;
@@ -51,7 +51,7 @@ public class AuthServiceImpl implements AuthService {
         User user = User.builder()
                 .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole() != null ? request.getRole() : Role.ROLE_RECEPTIONIST)
+                .role(request.getRole() != null ? request.getRole() : UserRole.ROLE_RECEPTIONIST)
                 .active(true)
                 .build();
 
