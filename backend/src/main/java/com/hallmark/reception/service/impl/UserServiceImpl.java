@@ -1,6 +1,7 @@
 package com.hallmark.reception.service.impl;
 
 import com.hallmark.reception.dto.CreateUserRequestDto;
+import com.hallmark.reception.dto.UserResponseDto;
 import com.hallmark.reception.entity.User;
 import com.hallmark.reception.entity.UserRole;
 import com.hallmark.reception.exception.ApiException;
@@ -41,8 +42,18 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ApiException("User not found"));
     }
 
-    @Override
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
-    }
+   @Override
+public List<UserResponseDto> getAllUsers() {
+
+    return userRepository.findAll()
+            .stream()
+            .map(user -> UserResponseDto.builder()
+                    .id(user.getId())
+                    .fullName(user.getFullName())
+                    .username(user.getUsername())
+                    .role(user.getRole())
+                    .active(user.isActive())
+                    .build())
+            .toList();
+}
 }
