@@ -22,4 +22,8 @@ public class PaymentRequestDto {
     private String reference;
 
     private String notes;
+
+    private String paymentDuration;
+
+    private Integer durationDays;
 }

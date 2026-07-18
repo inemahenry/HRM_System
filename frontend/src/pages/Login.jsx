@@ -2,30 +2,23 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaLock, FaUser } from "react-icons/fa";
 import HallmarkMark from "../components/HallmarkMark";
-import api from "../api/api";
 import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { setUser, setIsAuthenticated } = useAuth();
+  const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const login = async () => {
+  const handleLogin = async () => {
     setError("");
     setIsLoading(true);
 
     try {
-      const response = await api.post("/auth/login", { username, password });
-      if (response.data?.success) {
-        setUser(response.data.user);
-        setIsAuthenticated(true);
-        navigate("/dashboard");
-      } else {
-        setError(response.data?.message || "Unable to authenticate.");
-      }
+      await login({ username, password });
+      navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "Unable to authenticate.");
     } finally {
@@ -108,7 +101,7 @@ export default function Login() {
 
         <button
           type="button"
-          onClick={login}
+          onClick={handleLogin}
           disabled={isLoading}
           className="mt-8 flex h-14 w-full items-center justify-center rounded-xl bg-hallmark px-4 text-base font-semibold tracking-wide text-white shadow-[0_8px_18px_rgba(128,12,24,0.25)] transition-all duration-300 hover:-translate-y-px hover:bg-hallmark-deep hover:shadow-[0_12px_24px_rgba(128,12,24,0.32)] focus:outline-none focus-visible:ring-4 focus-visible:ring-hallmark/25 active:translate-y-0 lg:mt-10 lg:text-lg disabled:cursor-not-allowed disabled:opacity-60"
         >

@@ -57,6 +57,12 @@ public class Guest {
 
     private String notes;
 
+    private String recordedByName;
+
+    private String recordedByUsername;
+
+    private LocalDate nextDueDate;
+
     @Version
     private Long version;
 }

@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -36,6 +37,30 @@ public class Receipt {
     private String status;
 
     private String notes;
+
+    private String guestName;
+
+    private String villaNumber;
+
+    private String primaryTenant;
+
+    private String phoneNumber;
+
+    private BigDecimal previousBalance;
+
+    private BigDecimal remainingBalance;
+
+    private LocalDate dueDate;
+
+    private String receivedBy;
+
+    private String paymentMethod;
+
+    private String reference;
+
+    private String paymentDuration;
+
+    private Integer durationDays;
 
     @Column(nullable = false)
     private LocalDateTime issuedAt;

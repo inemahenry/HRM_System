@@ -2,9 +2,11 @@ import { useState } from "react";
 import { FaCalendarAlt, FaRegBell, FaSearch } from "react-icons/fa";
 import SearchOverlay from "./SearchOverlay";
 import { useGuests } from "../hooks/useGuests";
+import { useAuth } from "../context/AuthContext";
 
 export default function Navbar({ title = "Dashboard", eyebrow = "OPERATIONS CENTER" }) {
   const { searchResults, searchQuery, setSearchQuery } = useGuests();
+  const { user } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const currentDate = new Intl.DateTimeFormat("en-US", {
     weekday: "long",
@@ -47,11 +49,11 @@ export default function Navbar({ title = "Dashboard", eyebrow = "OPERATIONS CENT
 
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold text-ink">Admin</p>
-              <p className="text-xs text-muted">Welcome back</p>
+              <p className="text-sm font-semibold text-ink">{user?.name || user?.username || "Admin"}</p>
+              <p className="text-xs text-muted">{user?.role === "manager" ? "Manager" : "Receptionist"}</p>
             </div>
             <span className="flex size-10 items-center justify-center rounded-full bg-[#800C18]/10 text-sm font-semibold text-hallmark ring-2 ring-white shadow-[0_3px_10px_rgba(31,41,55,0.08)]">
-              A
+              {(user?.name || user?.username || "A").charAt(0).toUpperCase()}
             </span>
           </div>
         </div>

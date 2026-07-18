@@ -10,6 +10,7 @@ import {
   FaUsers,
 } from "react-icons/fa";
 import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import HallmarkMark from "./HallmarkMark";
 
 const navigationItems = [
@@ -40,9 +41,13 @@ const itemClassName = (isActive) =>
 
 export default function Sidebar() {
   const navigate = useNavigate();
+  const { logout, user } = useAuth();
+  const isManager = user?.role === "manager" || user?.role === "ROLE_MANAGER";
+  const visibleItems = navigationItems.filter((item) => item.label !== "Settings" || isManager);
 
   const handleLogout = () => {
-    navigate("/");
+    logout();
+    navigate("/login");
   };
 
   return (
@@ -63,7 +68,7 @@ export default function Sidebar() {
 
       <nav aria-label="Primary navigation">
         <ul className="space-y-1.5">
-          {navigationItems.map(({ label, icon: Icon, to, end, children }) => (
+          {visibleItems.map(({ label, icon: Icon, to, end, children }) => (
             <li key={label}>
               <NavLink
                 to={to}

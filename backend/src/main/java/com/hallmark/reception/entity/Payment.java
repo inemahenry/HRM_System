@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -33,6 +34,20 @@ public class Payment {
     private String reference;
 
     private String notes;
+
+    private String receptionistName;
+
+    private String receptionistUsername;
+
+    private String paymentDuration;
+
+    private Integer durationDays;
+
+    private LocalDate dueDate;
+
+    private BigDecimal previousBalance;
+
+    private BigDecimal remainingBalance;
 
     @Column(nullable = false)
     private LocalDateTime paidAt;

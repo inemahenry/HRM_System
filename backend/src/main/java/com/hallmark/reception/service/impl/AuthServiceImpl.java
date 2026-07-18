@@ -38,6 +38,7 @@ public class AuthServiceImpl implements AuthService {
                 .accessToken(token)
                 .tokenType("Bearer")
                 .username(user.getUsername())
+                .fullName(user.getFullName())
                 .role(user.getRole().name())
                 .build();
     }
@@ -63,6 +64,7 @@ public class AuthServiceImpl implements AuthService {
                 .accessToken(token)
                 .tokenType("Bearer")
                 .username(user.getUsername())
+                .fullName(user.getFullName())
                 .role(user.getRole().name())
                 .build();
     }

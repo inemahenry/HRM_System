@@ -20,6 +20,10 @@ export default function Payments() {
   const [selectedGuestId, setSelectedGuestId] = useState("");
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState(paymentMethods[0]);
+  const [paymentDuration, setPaymentDuration] = useState("Monthly");
+  const [durationDays, setDurationDays] = useState("");
+  const [referenceNumber, setReferenceNumber] = useState("");
+  const [notes, setNotes] = useState("");
   const [previewReceipt, setPreviewReceipt] = useState(null);
 
   const totalCollected = guests.reduce((sum, guest) => sum + (guest.depositPaid || 0), 0);
@@ -31,13 +35,22 @@ export default function Payments() {
 
   const selectedGuest = useMemo(() => guests.find((guest) => guest.id === selectedGuestId) || null, [guests, selectedGuestId]);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!selectedGuestId || !amount) return;
-    const result = addPayment(selectedGuestId, { amount, method });
-    setPreviewReceipt(result.receiptRecord);
-    setAmount("");
-    setMethod(settings.paymentMethods?.[0] || paymentMethods[0]);
+
+    try {
+      const result = await addPayment(selectedGuestId, { amount, method, paymentDuration, durationDays, reference: referenceNumber, notes });
+      setPreviewReceipt(result?.receiptRecord ?? null);
+      setAmount("");
+      setMethod(settings.paymentMethods?.[0] || paymentMethods[0]);
+      setPaymentDuration("Monthly");
+      setDurationDays("");
+      setReferenceNumber("");
+      setNotes("");
+    } catch (error) {
+      console.warn("Unable to record payment", error);
+    }
   };
 
   return (
@@ -129,6 +142,32 @@ export default function Payments() {
               </select>
             </label>
 
+            <label className="block text-sm font-medium text-ink">
+              Payment duration
+              <select value={paymentDuration} onChange={(event) => setPaymentDuration(event.target.value)} className="mt-2 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none">
+                <option value="Monthly">Monthly</option>
+                <option value="Daily">Daily</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+
+            {paymentDuration === "Other" && (
+              <label className="block text-sm font-medium text-ink">
+                Days
+                <input type="number" min="1" step="1" value={durationDays} onChange={(event) => setDurationDays(event.target.value)} className="mt-2 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none" placeholder="Enter number of days" />
+              </label>
+            )}
+
+            <label className="block text-sm font-medium text-ink">
+              Reference number
+              <input type="text" value={referenceNumber} onChange={(event) => setReferenceNumber(event.target.value)} className="mt-2 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none" placeholder="Optional" />
+            </label>
+
+            <label className="block text-sm font-medium text-ink">
+              Notes
+              <textarea value={notes} onChange={(event) => setNotes(event.target.value)} className="mt-2 min-h-[90px] w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none" placeholder="Optional" />
+            </label>
+
             {selectedGuest && (
               <div className="rounded-2xl border border-line bg-white p-4 text-sm text-muted">
                 <p className="font-semibold text-ink">{selectedGuest.name}</p>
@@ -165,10 +204,10 @@ export default function Payments() {
               {payments.length ? payments.map((payment) => (
                 <tr key={payment.id} className="transition hover:bg-[#800C18]/[0.035] even:bg-slate-50/60">
                   <td className="px-6 py-4 font-semibold text-ink">{payment.guestName}</td>
-                  <td className="px-6 py-4 text-muted">{payment.receiptNumber}</td>
+                  <td className="px-6 py-4 text-muted">{payment.receiptNumber || payment.id}</td>
                   <td className="px-6 py-4 font-semibold text-ink">{formatCurrency(payment.amount)}</td>
                   <td className="px-6 py-4 text-muted">{payment.method}</td>
-                  <td className="px-6 py-4 text-muted">{payment.status}</td>
+                  <td className="px-6 py-4 text-muted">{payment.receptionistName || payment.receivedBy || "—"}</td>
                   <td className="px-6 py-4 text-muted">{new Date(payment.createdAt).toLocaleDateString()}</td>
                 </tr>
               )) : <tr><td colSpan="6" className="px-6 py-16 text-center text-muted">No payments recorded yet.</td></tr>}

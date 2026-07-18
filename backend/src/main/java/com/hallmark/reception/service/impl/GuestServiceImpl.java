@@ -2,10 +2,12 @@ package com.hallmark.reception.service.impl;
 
 import com.hallmark.reception.dto.GuestRequestDto;
 import com.hallmark.reception.entity.Guest;
+import com.hallmark.reception.entity.User;
 import com.hallmark.reception.entity.Villa;
 import com.hallmark.reception.exception.ResourceNotFoundException;
 import com.hallmark.reception.repository.GuestRepository;
 import com.hallmark.reception.repository.VillaRepository;
+import com.hallmark.reception.service.AuthenticatedUserContext;
 import com.hallmark.reception.service.GuestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ public class GuestServiceImpl implements GuestService {
 
     private final GuestRepository guestRepository;
     private final VillaRepository villaRepository;
+    private final AuthenticatedUserContext authenticatedUserContext;
 
     @Override
     public List<Guest> findAll() {
@@ -34,6 +37,7 @@ public class GuestServiceImpl implements GuestService {
 
     @Override
     public Guest create(GuestRequestDto request) {
+        User currentUser = authenticatedUserContext.currentUser();
         Guest guest = Guest.builder()
                 .fullName(request.getFullName())
                 .phoneNumber(request.getPhoneNumber())
@@ -50,6 +54,8 @@ public class GuestServiceImpl implements GuestService {
                 .villaId(request.getVillaId())
                 .villaNumber(request.getVillaNumber())
                 .notes(request.getNotes())
+                .recordedByName(currentUser != null ? currentUser.getFullName() : null)
+                .recordedByUsername(currentUser != null ? currentUser.getUsername() : null)
                 .build();
 
         Guest saved = guestRepository.save(guest);
@@ -59,6 +65,7 @@ public class GuestServiceImpl implements GuestService {
 
     @Override
     public Guest update(Long id, GuestRequestDto request) {
+        User currentUser = authenticatedUserContext.currentUser();
         Guest guest = findById(id);
         guest.setFullName(request.getFullName());
         guest.setPhoneNumber(request.getPhoneNumber());
@@ -75,6 +82,8 @@ public class GuestServiceImpl implements GuestService {
         guest.setVillaId(request.getVillaId());
         guest.setVillaNumber(request.getVillaNumber());
         guest.setNotes(request.getNotes());
+        guest.setRecordedByName(currentUser != null ? currentUser.getFullName() : guest.getRecordedByName());
+        guest.setRecordedByUsername(currentUser != null ? currentUser.getUsername() : guest.getRecordedByUsername());
         Guest saved = guestRepository.save(guest);
         applyVillaAssignment(saved, false);
         return saved;
@@ -82,6 +91,7 @@ public class GuestServiceImpl implements GuestService {
 
     @Override
     public Guest checkIn(Long id, GuestRequestDto request) {
+        User currentUser = authenticatedUserContext.currentUser();
         Guest guest = findById(id);
         if (request != null) {
             if (request.getFullName() != null) {
@@ -114,6 +124,8 @@ public class GuestServiceImpl implements GuestService {
         }
 
         guest.setStayStatus("Staying");
+        guest.setRecordedByName(currentUser != null ? currentUser.getFullName() : guest.getRecordedByName());
+        guest.setRecordedByUsername(currentUser != null ? currentUser.getUsername() : guest.getRecordedByUsername());
         guest.setCheckInDate(guest.getCheckInDate() != null ? guest.getCheckInDate() : LocalDate.now());
         guest.setCheckOutDate(null);
         if (guest.getPaymentStatus() == null || guest.getPaymentStatus().isBlank()) {
@@ -126,8 +138,11 @@ public class GuestServiceImpl implements GuestService {
 
     @Override
     public Guest checkOut(Long id) {
+        User currentUser = authenticatedUserContext.currentUser();
         Guest guest = findById(id);
         guest.setStayStatus("Checked Out");
+        guest.setRecordedByName(currentUser != null ? currentUser.getFullName() : guest.getRecordedByName());
+        guest.setRecordedByUsername(currentUser != null ? currentUser.getUsername() : guest.getRecordedByUsername());
         guest.setCheckOutDate(guest.getCheckOutDate() != null ? guest.getCheckOutDate() : LocalDate.now());
         if (guest.getRemainingBalance() != null && guest.getRemainingBalance().compareTo(BigDecimal.ZERO) > 0) {
             guest.setPaymentStatus("Pending");
