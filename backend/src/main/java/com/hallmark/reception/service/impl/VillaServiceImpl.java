@@ -9,6 +9,7 @@ import com.hallmark.reception.service.VillaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -19,13 +20,15 @@ public class VillaServiceImpl implements VillaService {
 
     @Override
     public List<Villa> findAll() {
-        return villaRepository.findAll();
+        return villaRepository.findAll().stream()
+                .filter(this::isReceptionVilla)
+                .sorted(Comparator.comparingInt(villa -> Integer.parseInt(villa.getNumber())))
+                .toList();
     }
 
     @Override
     public List<Villa> findAvailable() {
-        return villaRepository.findAll().stream()
-                .filter(Villa::isRentable)
+        return findAll().stream()
                 .filter(villa -> "VACANT".equalsIgnoreCase(villa.getStatus()))
                 .toList();
     }
@@ -33,7 +36,7 @@ public class VillaServiceImpl implements VillaService {
     @Override
     public List<Villa> search(String term) {
         String needle = term.toLowerCase();
-        return villaRepository.findAll().stream()
+        return findAll().stream()
                 .filter(villa -> villa.getNumber() != null && villa.getNumber().toLowerCase().contains(needle)
                         || villa.getStatus() != null && villa.getStatus().toLowerCase().contains(needle)
                         || villa.getGuestName() != null && villa.getGuestName().toLowerCase().contains(needle))
@@ -42,46 +45,39 @@ public class VillaServiceImpl implements VillaService {
 
     @Override
     public List<Villa> findByStatus(String status) {
-        return villaRepository.findAll().stream()
+        return findAll().stream()
                 .filter(villa -> status.equalsIgnoreCase(villa.getStatus()))
                 .toList();
     }
 
     @Override
     public Villa findById(Long id) {
-        return villaRepository.findById(id)
+        Villa villa = villaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Villa not found with id " + id));
+        if (!isReceptionVilla(villa)) {
+            throw new ResourceNotFoundException("Villa not found with id " + id);
+        }
+        return villa;
     }
 
     @Override
     public Villa create(VillaRequestDto request) {
-        if (villaRepository.findByNumber(request.getNumber()).isPresent()) {
-            throw new ApiException("Villa number already exists");
-        }
-
-        Villa villa = Villa.builder()
-                .number(request.getNumber())
-                .status(request.getStatus() != null ? request.getStatus() : "VACANT")
-                .active(true)
-                .rentable(!"14".equals(request.getNumber()))
-                .guestId(request.getGuestId())
-                .guestName(request.getGuestName())
-                .checkOutDate(request.getCheckOutDate())
-                .type(request.getType())
-                .notes(request.getNotes())
-                .build();
-        return villaRepository.save(villa);
+        throw new ApiException("Hallmark has a fixed inventory of 30 villas. Edit an existing villa instead.");
     }
 
     @Override
     public Villa update(Long id, VillaRequestDto request) {
         Villa villa = findById(id);
-        villa.setNumber(request.getNumber());
         villa.setStatus(request.getStatus() != null ? request.getStatus() : villa.getStatus());
         villa.setGuestId(request.getGuestId());
         villa.setGuestName(request.getGuestName());
         villa.setCheckOutDate(request.getCheckOutDate());
         villa.setType(request.getType());
+        villa.setOccupancy(request.getOccupancy() != null ? request.getOccupancy() : villa.getOccupancy());
+        villa.setRentStatus(request.getRentStatus() != null ? request.getRentStatus() : villa.getRentStatus());
+        villa.setCleaningPaymentStatus(request.getCleaningPaymentStatus() != null ? request.getCleaningPaymentStatus() : villa.getCleaningPaymentStatus());
+        villa.setCleaningDay(request.getCleaningDay());
+        villa.setAssignedCleaners(request.getAssignedCleaners());
         villa.setNotes(request.getNotes());
         return villaRepository.save(villa);
     }
@@ -96,6 +92,9 @@ public class VillaServiceImpl implements VillaService {
     @Override
     public Villa markVacant(Long id) {
         Villa villa = findById(id);
+        if (!villa.isRentable()) {
+            throw new ApiException("Villa 14 is reserved for housekeepers and cannot be rented.");
+        }
         villa.setStatus("VACANT");
         villa.setGuestId(null);
         villa.setGuestName(null);
@@ -107,7 +106,19 @@ public class VillaServiceImpl implements VillaService {
 
     @Override
     public void delete(Long id) {
-        Villa villa = findById(id);
-        villaRepository.delete(villa);
+        throw new ApiException("Hallmark's 30 villa records are fixed and cannot be deleted.");
+    }
+
+    private boolean isReceptionVilla(Villa villa) {
+        return villa.isRentable() && isHallmarkVilla(villa.getNumber());
+    }
+
+    private boolean isHallmarkVilla(String number) {
+        try {
+            int villaNumber = Integer.parseInt(number);
+            return villaNumber >= 1 && villaNumber <= 30 && villaNumber != 14;
+        } catch (NumberFormatException exception) {
+            return false;
+        }
     }
 }

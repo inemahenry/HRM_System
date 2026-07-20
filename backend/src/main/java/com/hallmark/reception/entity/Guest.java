@@ -38,6 +38,8 @@ public class Guest {
     @Column(nullable = false)
     private String stayStatus;
 
+    private String stayType;
+
     @Column(nullable = false)
     private String paymentStatus;
 

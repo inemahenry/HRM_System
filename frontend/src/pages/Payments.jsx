@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
-import { FaClock, FaDollarSign, FaMoneyBillWave, FaReceipt, FaWallet } from "react-icons/fa";
+import { FaReceipt } from "react-icons/fa";
 import AppLayout from "../components/AppLayout";
 import Modal from "../components/Modal";
 import PageHeader from "../components/PageHeader";
 import ReceiptPreview from "../components/ReceiptPreview";
-import StatCard from "../components/StatCard";
 import { useGuests } from "../hooks/useGuests";
 
 const formatCurrency = (amount) =>
@@ -19,19 +18,14 @@ export default function Payments() {
   const { guests, payments, addPayment, settings } = useGuests();
   const [selectedGuestId, setSelectedGuestId] = useState("");
   const [amount, setAmount] = useState("");
+  const [paymentType, setPaymentType] = useState("RENT");
   const [method, setMethod] = useState(paymentMethods[0]);
   const [paymentDuration, setPaymentDuration] = useState("Monthly");
   const [durationDays, setDurationDays] = useState("");
-  const [referenceNumber, setReferenceNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [previewReceipt, setPreviewReceipt] = useState(null);
 
-  const totalCollected = guests.reduce((sum, guest) => sum + (guest.depositPaid || 0), 0);
-  const outstandingBalance = guests.reduce((sum, guest) => sum + (guest.remainingBalance || 0), 0);
-  const paidCount = guests.filter((guest) => guest.paymentStatus === "Paid").length;
-  const partialCount = guests.filter((guest) => guest.paymentStatus === "Partial").length;
-  const unpaidCount = guests.filter((guest) => guest.paymentStatus === "Unpaid").length;
-  const dueGuests = guests.filter((guest) => guest.paymentStatus !== "Paid");
+  const dueGuests = guests.filter((guest) => guest.stayStatus === "OCCUPIED");
 
   const selectedGuest = useMemo(() => guests.find((guest) => guest.id === selectedGuestId) || null, [guests, selectedGuestId]);
 
@@ -40,13 +34,13 @@ export default function Payments() {
     if (!selectedGuestId || !amount) return;
 
     try {
-      const result = await addPayment(selectedGuestId, { amount, method, paymentDuration, durationDays, reference: referenceNumber, notes });
+      const result = await addPayment(selectedGuestId, { paymentType, amount, method, paymentDuration, durationDays, notes });
       setPreviewReceipt(result?.receiptRecord ?? null);
       setAmount("");
+      setPaymentType("RENT");
       setMethod(settings.paymentMethods?.[0] || paymentMethods[0]);
       setPaymentDuration("Monthly");
       setDurationDays("");
-      setReferenceNumber("");
       setNotes("");
     } catch (error) {
       console.warn("Unable to record payment", error);
@@ -58,21 +52,14 @@ export default function Payments() {
       <PageHeader
         eyebrow="Payment center"
         title="Payments"
-        description="Record payments, review history, and generate receipts for every guest stay."
+        description="Record rent or cleaning payments. Guest, villa, receipt number, date, due date, and balance are filled automatically."
       />
-
-      <section className="mt-7 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total Received" value={formatCurrency(totalCollected)} icon={FaMoneyBillWave} tone="green" />
-        <StatCard title="Outstanding Balance" value={formatCurrency(outstandingBalance)} icon={FaWallet} tone="amber" />
-        <StatCard title="Paid Bookings" value={paidCount} icon={FaDollarSign} tone="green" />
-        <StatCard title="Pending Payments" value={partialCount + unpaidCount} icon={FaClock} tone="burgundy" />
-      </section>
 
       <section className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_8px_30px_rgba(31,41,55,0.055)]">
           <div className="border-b border-line px-6 py-5">
             <h2 className="text-lg font-semibold text-ink">Payment follow-up</h2>
-            <p className="mt-1 text-sm text-muted">Guests with balances or partial payments.</p>
+              <p className="mt-1 text-sm text-muted">Choose a current guest, then record the required payment details.</p>
           </div>
           <div className="hallmark-scrollbar overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
@@ -122,9 +109,17 @@ export default function Payments() {
               Guest
               <select value={selectedGuestId} onChange={(event) => setSelectedGuestId(event.target.value)} className="mt-2 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none">
                 <option value="">Select guest</option>
-                {guests.map((guest) => (
+                {guests.filter((guest) => guest.stayStatus === "OCCUPIED").map((guest) => (
                   <option key={guest.id} value={guest.id}>{guest.name} • {guest.villaNumber}</option>
                 ))}
+              </select>
+            </label>
+
+            <label className="block text-sm font-medium text-ink">
+              Payment type
+              <select value={paymentType} onChange={(event) => setPaymentType(event.target.value)} className="mt-2 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none">
+                <option value="RENT">Rent</option>
+                <option value="CLEANING">Cleaning</option>
               </select>
             </label>
 
@@ -159,11 +154,6 @@ export default function Payments() {
             )}
 
             <label className="block text-sm font-medium text-ink">
-              Reference number
-              <input type="text" value={referenceNumber} onChange={(event) => setReferenceNumber(event.target.value)} className="mt-2 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none" placeholder="Optional" />
-            </label>
-
-            <label className="block text-sm font-medium text-ink">
               Notes
               <textarea value={notes} onChange={(event) => setNotes(event.target.value)} className="mt-2 min-h-[90px] w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none" placeholder="Optional" />
             </label>
@@ -171,8 +161,9 @@ export default function Payments() {
             {selectedGuest && (
               <div className="rounded-2xl border border-line bg-white p-4 text-sm text-muted">
                 <p className="font-semibold text-ink">{selectedGuest.name}</p>
+                <p className="mt-1">Villa: {selectedGuest.villaNumber}</p>
                 <p className="mt-1">Balance: {formatCurrency(selectedGuest.remainingBalance)}</p>
-                <p className="mt-1">Current status: {selectedGuest.paymentStatus}</p>
+                <p className="mt-1">Receipt number and date are generated automatically.</p>
               </div>
             )}
           </div>
@@ -193,6 +184,7 @@ export default function Payments() {
             <thead className="bg-[#800C18]/[0.035] text-xs font-semibold uppercase tracking-[0.08em] text-muted">
               <tr>
                 <th className="px-6 py-4">Guest</th>
+                <th className="px-6 py-4">Type</th>
                 <th className="px-6 py-4">Receipt</th>
                 <th className="px-6 py-4">Amount</th>
                 <th className="px-6 py-4">Method</th>
@@ -204,13 +196,14 @@ export default function Payments() {
               {payments.length ? payments.map((payment) => (
                 <tr key={payment.id} className="transition hover:bg-[#800C18]/[0.035] even:bg-slate-50/60">
                   <td className="px-6 py-4 font-semibold text-ink">{payment.guestName}</td>
+                  <td className="px-6 py-4 text-muted">{payment.paymentType === "CLEANING" ? "Cleaning" : "Rent"}</td>
                   <td className="px-6 py-4 text-muted">{payment.receiptNumber || payment.id}</td>
                   <td className="px-6 py-4 font-semibold text-ink">{formatCurrency(payment.amount)}</td>
                   <td className="px-6 py-4 text-muted">{payment.method}</td>
                   <td className="px-6 py-4 text-muted">{payment.receptionistName || payment.receivedBy || "—"}</td>
                   <td className="px-6 py-4 text-muted">{new Date(payment.createdAt).toLocaleDateString()}</td>
                 </tr>
-              )) : <tr><td colSpan="6" className="px-6 py-16 text-center text-muted">No payments recorded yet.</td></tr>}
+              )) : <tr><td colSpan="7" className="px-6 py-16 text-center text-muted">No payments recorded yet.</td></tr>}
             </tbody>
           </table>
         </div>

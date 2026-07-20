@@ -1,6 +1,5 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import api from "../api/api";
-import { useAuth } from "./AuthContext";
 
 const GuestContext = createContext(null);
 const STORAGE_KEY = "hallmark-residences-state-v1";
@@ -11,12 +10,6 @@ const toLocalDateKey = (date) => {
   const month = String(value.getMonth() + 1).padStart(2, "0");
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-};
-
-const dateOffset = (days) => {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  return toLocalDateKey(date);
 };
 
 const toAmount = (value) => {
@@ -55,30 +48,18 @@ const getDateKey = (value) => {
 
 const createId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-const createReceiptNumber = (receipts, targetYear = new Date().getFullYear()) => {
-  const yearPrefix = `HRMS-${targetYear}`;
-  const currentYearCount = receipts.filter((item) => item.receiptNumber?.startsWith(`${yearPrefix}-`)).length;
-  return `${yearPrefix}-${String(currentYearCount + 1).padStart(6, "0")}`;
+const isReceptionVilla = (villa) => villa?.rentable !== false && String(villa?.number) !== "14";
+const isReceptionGuest = (guest) => String(guest?.villaNumber) !== "14";
+
+const normalizeStayStatus = (status) => {
+  const normalized = String(status ?? "").trim().toUpperCase().replace(/\s+/g, "_");
+  if (normalized === "CHECKED_OUT") return "CHECKED_OUT";
+  if (normalized === "BOOKED" || normalized === "RESERVED") return "BOOKED";
+  return "OCCUPIED";
 };
 
-const calculateNextDueDate = (paymentDuration, durationDays) => {
-  const today = new Date();
-  if (paymentDuration === "Monthly") {
-    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
-    return toLocalDateKey(nextMonth);
-  }
-  if (paymentDuration === "Daily") {
-    const nextDay = new Date(today);
-    nextDay.setDate(today.getDate() + 1);
-    return toLocalDateKey(nextDay);
-  }
-  if (durationDays && Number(durationDays) > 0) {
-    const nextDate = new Date(today);
-    nextDate.setDate(today.getDate() + Number(durationDays));
-    return toLocalDateKey(nextDate);
-  }
-  return toLocalDateKey(today);
-};
+const normalizeStayType = (stayType, checkOutDate) =>
+  String(stayType ?? "").trim().toUpperCase() === "OPEN_STAY" || !checkOutDate ? "OPEN_STAY" : "FIXED_STAY";
 
 const createDefaultSettings = () => ({
   companyName: "Hallmark Residences",
@@ -96,22 +77,7 @@ const createDefaultSettings = () => ({
   ],
 });
 
-const createDefaultNotifications = () => [
-  {
-    id: createId("notif"),
-    title: "Guest checking out today",
-    message: "A departure is scheduled for today.",
-    type: "warning",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: createId("notif"),
-    title: "Outstanding balance",
-    message: "One or more guests still have pending balances.",
-    type: "warning",
-    createdAt: new Date().toISOString(),
-  },
-];
+const createDefaultNotifications = () => [];
 
 const createDefaultActivityLog = () => [
   {
@@ -142,7 +108,7 @@ const normalizeGuest = (guest) => {
 
   return {
     ...guest,
-    id: guest.id ?? createId("guest"),
+    id: guest.id !== undefined && guest.id !== null ? String(guest.id) : createId("guest"),
     name: getStringValue(guest.name, guest.fullName, guest.guestName),
     phone: getStringValue(guest.phone, guest.phoneNumber),
     email: getStringValue(guest.email),
@@ -159,7 +125,8 @@ const normalizeGuest = (guest) => {
     remainingBalance,
     paymentMethod: getStringValue(guest.paymentMethod),
     paymentStatus: getStringValue(guest.paymentStatus) || (roomPrice > 0 && remainingBalance <= 0 ? "Paid" : depositPaid > 0 ? "Partial" : "Unpaid"),
-    stayStatus: getStringValue(guest.stayStatus, guest.status) || "Reserved",
+    stayStatus: normalizeStayStatus(getStringValue(guest.stayStatus, guest.status)),
+    stayType: normalizeStayType(guest.stayType, getDateKey(guest.checkOutDate ?? guest.checkOut)),
     notes: getStringValue(guest.notes),
     recordedByName: getStringValue(guest.recordedByName),
     recordedByUsername: getStringValue(guest.recordedByUsername),
@@ -174,15 +141,23 @@ const normalizeVillaStatus = (rawStatus) => {
     return "Available";
   }
 
-  if (["OCCUPIED", "IN_USE", "BOOKED"].includes(normalizedStatus)) {
+  if (["OCCUPIED", "IN_USE"].includes(normalizedStatus)) {
     return "Occupied";
+  }
+
+  if (normalizedStatus === "BOOKED") {
+    return "Booked";
   }
 
   if (["MAINTENANCE", "UNDER_MAINTENANCE"].includes(normalizedStatus)) {
     return "Maintenance";
   }
 
-  if (["CLEANING", "HOUSEKEEPERS", "HOUSEKEEPING"].includes(normalizedStatus)) {
+  if (["CLEANING"].includes(normalizedStatus)) {
+    return "Cleaning";
+  }
+
+  if (["HOUSEKEEPERS", "HOUSEKEEPING"].includes(normalizedStatus)) {
     return "Housekeepers";
   }
 
@@ -203,24 +178,32 @@ const normalizeVilla = (villa) => {
 
   return {
     ...villa,
-    id: villa.id ?? createId("villa"),
+    id: villa.id !== undefined && villa.id !== null ? String(villa.id) : createId("villa"),
     number: normalizedNumber,
     status: effectiveStatus,
     rentable,
     guestId: villa.guestId ?? null,
     guestName: getStringValue(villa.guestName),
     checkOutDate: getStringValue(villa.checkOutDate),
+    occupancy: toAmount(villa.occupancy),
+    primaryTenantName: getStringValue(villa.primaryTenantName, villa.guestName),
+    rentStatus: getStringValue(villa.rentStatus, "NOT_DUE"),
+    cleaningPaymentStatus: getStringValue(villa.cleaningPaymentStatus, "DUE"),
+    cleaningDay: getStringValue(villa.cleaningDay),
+    assignedCleaners: getStringValue(villa.assignedCleaners),
+    cleaningNextDueDate: getDateKey(villa.cleaningNextDueDate),
     notes: getStringValue(villa.notes),
   };
 };
 
 const normalizePayment = (payment) => ({
   ...payment,
-  id: payment.id ?? createId("payment"),
-  guestId: payment.guestId ?? payment.guest?.id,
+  id: payment.id !== undefined && payment.id !== null ? String(payment.id) : createId("payment"),
+  guestId: payment.guestId !== undefined && payment.guestId !== null ? String(payment.guestId) : payment.guest?.id ? String(payment.guest.id) : null,
   guestName: getStringValue(payment.guestName, payment.guest?.fullName, payment.guest?.name),
   amount: toAmount(payment.amount),
   method: getStringValue(payment.method),
+  paymentType: getStringValue(payment.paymentType, "RENT"),
   status: getStringValue(payment.status),
   previousBalance: toAmount(payment.previousBalance),
   remainingBalance: toAmount(payment.remainingBalance),
@@ -232,14 +215,15 @@ const normalizePayment = (payment) => ({
 
 const normalizeReceipt = (receipt) => ({
   ...receipt,
-  id: receipt.id ?? createId("receipt"),
-  guestId: receipt.guestId ?? receipt.guest?.id,
+  id: receipt.id !== undefined && receipt.id !== null ? String(receipt.id) : createId("receipt"),
+  guestId: receipt.guestId !== undefined && receipt.guestId !== null ? String(receipt.guestId) : receipt.guest?.id ? String(receipt.guest.id) : null,
   guestName: getStringValue(receipt.guestName, receipt.guest?.fullName, receipt.guest?.name),
   villaNumber: getStringValue(receipt.villaNumber),
   amount: toAmount(receipt.amount),
   previousBalance: toAmount(receipt.previousBalance),
   remainingBalance: toAmount(receipt.remainingBalance),
   paymentMethod: getStringValue(receipt.paymentMethod, receipt.method),
+  paymentType: getStringValue(receipt.paymentType, "RENT"),
   receiptNumber: getStringValue(receipt.receiptNumber),
   date: getStringValue(receipt.date, receipt.issuedAt?.split("T")[0]),
   time: getStringValue(receipt.time, receipt.issuedAt?.split("T")[1]),
@@ -262,7 +246,7 @@ const normalizeNotification = (notification) => ({
 });
 
 const normalizeDashboardPayload = (payload, guests, villas, payments) => {
-  const currentGuests = guests.filter((guest) => guest.stayStatus !== "Checked Out");
+  const currentGuests = guests.filter((guest) => guest.stayStatus !== "CHECKED_OUT");
   const dueGuests = currentGuests.filter((guest) => guest.remainingBalance > 0);
   const upcomingCheckouts = currentGuests
     .filter((guest) => guest.checkOutDate)
@@ -281,16 +265,29 @@ const normalizeDashboardPayload = (payload, guests, villas, payments) => {
     villaNumber: guest.villaNumber || "—",
     amount: guest.remainingBalance,
   }));
+  const reminders = Array.isArray(payload?.reminders) ? payload.reminders : paymentReminders.map((reminder) => ({
+    ...reminder,
+    type: "RENT_DUE",
+    title: "Rent due",
+    message: "Rent payment is due.",
+  }));
+  const rentableVillas = villas.filter((villa) => villa.rentable !== false);
 
   return {
-    totalVillas: villas.length,
-    occupiedVillas: villas.filter((villa) => villa.status === "Occupied").length,
-    vacantVillas: villas.filter((villa) => villa.status === "Available" || villa.status === "Reserved").length,
+    totalVillas: payload?.totalVillas ?? rentableVillas.length,
+    occupiedVillas: payload?.occupiedVillas ?? rentableVillas.filter((villa) => villa.status === "Occupied").length,
+    vacantVillas: payload?.vacantVillas ?? rentableVillas.filter((villa) => villa.status === "Available").length,
+    bookedVillas: payload?.bookedVillas ?? currentGuests.filter((guest) => guest.stayStatus === "BOOKED").length,
+    rentPaymentsDue: payload?.rentPaymentsDue ?? reminders.filter((reminder) => String(reminder.type).startsWith("RENT_")).length,
+    cleaningPaymentsDue: payload?.cleaningPaymentsDue ?? reminders.filter((reminder) => String(reminder.type).startsWith("CLEANING_")).length,
+    guestsCheckingOutThisWeek: payload?.guestsCheckingOutThisWeek ?? currentGuests.filter((guest) => guest.checkOutDate).length,
+    actionRequired: payload?.actionRequired ?? reminders.length,
+    reminders,
     maintenanceVillas: villas.filter((villa) => villa.status === "Maintenance").length,
     cleaningVillas: villas.filter((villa) => villa.status === "Housekeepers").length,
     totalGuests: guests.length,
     guestsCheckedInToday: guests.filter((guest) => guest.checkInDate === toLocalDateKey(new Date())).length,
-    guestsCheckingOutToday: guests.filter((guest) => guest.checkOutDate === toLocalDateKey(new Date())).length,
+    guestsCheckingOutToday: currentGuests.filter((guest) => guest.checkOutDate === toLocalDateKey(new Date())).length,
     paymentsReceivedToday: payments.filter((payment) => payment.createdAt?.startsWith(new Date().toISOString().slice(0, 10))).length,
     paymentsDueToday: paymentReminders.length,
     outstandingBalances: guests.reduce((total, guest) => total + guest.remainingBalance, 0),
@@ -313,10 +310,10 @@ const readStoredState = () => {
 
     const parsed = JSON.parse(storedValue);
     return {
-      guests: (parsed.guests || []).map(normalizeGuest),
-      villas: (parsed.villas || []).map(normalizeVilla),
-      payments: (parsed.payments || []).map(normalizePayment),
-      receipts: (parsed.receipts || []).map(normalizeReceipt),
+      guests: (parsed.guests || []).map(normalizeGuest).filter(isReceptionGuest),
+      villas: (parsed.villas || []).map(normalizeVilla).filter(isReceptionVilla),
+      payments: (parsed.payments || []).map(normalizePayment).filter((payment) => String(payment.villaNumber) !== "14"),
+      receipts: (parsed.receipts || []).map(normalizeReceipt).filter((receipt) => String(receipt.villaNumber) !== "14"),
       activityLogs: parsed.activityLogs || createDefaultActivityLog(),
       notifications: (parsed.notifications || createDefaultNotifications()).map(normalizeNotification),
       settings: { ...createDefaultSettings(), ...(parsed.settings || {}) },
@@ -343,10 +340,9 @@ const createGuestPayload = (guestInput, villaLookup) => {
     idNumber: normalizedGuest.identityNumber,
     nationality: normalizedGuest.nationality,
     email: normalizedGuest.email,
-    stayStatus: normalizedGuest.stayStatus || "Reserved",
-    paymentStatus: normalizedGuest.paymentStatus || "Pending",
     checkInDate: normalizedGuest.checkInDate || null,
     checkOutDate: normalizedGuest.checkOutDate || null,
+    stayType: normalizedGuest.stayType,
     totalAmount: normalizedGuest.roomPrice,
     amountPaid: normalizedGuest.depositPaid,
     remainingBalance: normalizedGuest.remainingBalance,
@@ -370,7 +366,6 @@ export function GuestProvider({ children }) {
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const { user } = useAuth();
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -397,10 +392,13 @@ export function GuestProvider({ children }) {
         api.get("/notifications").catch(() => ({ data: [] })),
       ]);
 
-      const nextVillas = (villasResponse.data || []).map(normalizeVilla);
-      const nextGuests = (guestsResponse.data || []).map(normalizeGuest);
-      const nextPayments = (paymentsResponse.data || []).map(normalizePayment);
-      const nextReceipts = (receiptsResponse.data || []).map(normalizeReceipt);
+      const nextVillas = (villasResponse.data || []).map(normalizeVilla).filter(isReceptionVilla);
+      const nextGuests = (guestsResponse.data || []).map(normalizeGuest).filter(isReceptionGuest);
+      const receptionGuestIds = new Set(nextGuests.map((guest) => String(guest.id)));
+      const nextPayments = (paymentsResponse.data || []).map(normalizePayment)
+        .filter((payment) => receptionGuestIds.has(String(payment.guestId)));
+      const nextReceipts = (receiptsResponse.data || []).map(normalizeReceipt)
+        .filter((receipt) => String(receipt.villaNumber) !== "14");
       const nextNotifications = (notificationsResponse.data || []).map(normalizeNotification);
 
       setDashboardPayload(dashboardResponse.data || {});
@@ -408,7 +406,7 @@ export function GuestProvider({ children }) {
       setGuests(nextGuests);
       setPayments(nextPayments);
       setReceipts(nextReceipts);
-      setNotifications(nextNotifications.length ? nextNotifications : createDefaultNotifications().map(normalizeNotification));
+      setNotifications(nextNotifications);
       setSelectedGuest((currentSelected) => {
         if (!currentSelected) {
           return null;
@@ -425,7 +423,8 @@ export function GuestProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    refreshData();
+    const refreshTimer = window.setTimeout(refreshData, 0);
+    return () => window.clearTimeout(refreshTimer);
   }, [refreshData]);
 
   const selectGuest = useCallback((guest) => {
@@ -486,14 +485,12 @@ export function GuestProvider({ children }) {
     }
 
     const normalizedPayload = createGuestPayload({ ...guestToUpdate, ...updates }, villas);
-    const normalizedStatus = String(updates.stayStatus || guestToUpdate.stayStatus || "").toLowerCase();
+    const normalizedStatus = normalizeStayStatus(updates.stayStatus || guestToUpdate.stayStatus);
 
     try {
       let response;
-      if (normalizedStatus === "checked out") {
+      if (normalizedStatus === "CHECKED_OUT") {
         response = await api.post(`/guests/${guestId}/check-out`);
-      } else if (normalizedStatus === "staying") {
-        response = await api.post(`/guests/${guestId}/check-in`, normalizedPayload);
       } else {
         response = await api.put(`/guests/${guestId}`, normalizedPayload);
       }
@@ -508,6 +505,32 @@ export function GuestProvider({ children }) {
       throw err;
     }
   }, [addActivityLog, guests, refreshData, villas]);
+
+  const updateVilla = useCallback(async (villaId, updates = {}) => {
+    const villa = villas.find((item) => String(item.id) === String(villaId));
+    if (!villa) {
+      throw new Error("Villa not found.");
+    }
+
+    const response = await api.put(`/villas/${villaId}`, {
+      number: villa.number,
+      status: villa.status?.toUpperCase() === "AVAILABLE" ? "VACANT" : villa.status?.toUpperCase(),
+      guestId: villa.guestId ? Number(villa.guestId) : null,
+      guestName: villa.guestName,
+      checkOutDate: villa.checkOutDate || null,
+      type: updates.type ?? villa.type ?? "",
+      occupancy: villa.occupancy || 0,
+      rentStatus: villa.rentStatus || "NOT_DUE",
+      cleaningPaymentStatus: villa.cleaningPaymentStatus || "DUE",
+      cleaningDay: updates.cleaningDay ?? villa.cleaningDay ?? "",
+      assignedCleaners: updates.assignedCleaners ?? villa.assignedCleaners ?? "",
+      notes: updates.notes ?? villa.notes ?? "",
+    });
+    const updatedVilla = normalizeVilla(response.data);
+    setVillas((currentVillas) => currentVillas.map((item) => String(item.id) === String(villaId) ? updatedVilla : item));
+    await refreshData();
+    return updatedVilla;
+  }, [refreshData, villas]);
 
   const removeGuest = useCallback(async (guestId) => {
     const guestToRemove = guests.find((guest) => guest.id === guestId);
@@ -528,7 +551,7 @@ export function GuestProvider({ children }) {
   }, [addActivityLog, addNotification, guests, refreshData]);
 
   const addPayment = useCallback(async (guestId, paymentInput = {}) => {
-    const guest = guests.find((item) => item.id === guestId);
+    const guest = guests.find((item) => String(item.id) === String(guestId));
     if (!guest) {
       throw new Error("Guest not found.");
     }
@@ -540,12 +563,12 @@ export function GuestProvider({ children }) {
       const durationDays = paymentInput.durationDays ? Number(paymentInput.durationDays) : null;
       const reference = paymentInput.reference || "";
       const notes = paymentInput.notes || `Payment for ${guest.name}`;
-      const currentUserName = user?.name || user?.fullName || user?.username || "Receptionist";
-      const dueDate = calculateNextDueDate(paymentDuration, durationDays);
+      const paymentType = paymentInput.paymentType || "RENT";
       const response = await api.post("/payments", {
         guestId: Number(guestId),
         amount,
         method,
+        paymentType,
         reference,
         notes,
         paymentDuration,
@@ -553,56 +576,27 @@ export function GuestProvider({ children }) {
       });
 
       const paymentRecord = normalizePayment(response.data);
-      const receiptNumber = createReceiptNumber(receipts, new Date().getFullYear());
-      const receiptRecord = {
-        id: createId("receipt"),
-        guestId,
-        guestName: guest.name,
-        villaNumber: guest.villaNumber,
-        amount: paymentRecord.amount,
-        previousBalance: guest.remainingBalance,
-        remainingBalance: Math.max(guest.remainingBalance - paymentRecord.amount, 0),
-        paymentMethod: method,
-        receiptNumber,
-        date: toLocalDateKey(new Date()),
-        time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
-        receptionistName: currentUserName,
-        receivedBy: currentUserName,
-        companyFooter: settings.receiptFooter,
-        dueDate,
-        phoneNumber: guest.phone,
-        primaryTenant: guest.name,
-        paymentDuration,
-        durationDays,
-      };
-
       setPayments((currentPayments) => [paymentRecord, ...currentPayments]);
-      setReceipts((currentReceipts) => [normalizeReceipt(receiptRecord), ...currentReceipts]);
-      addActivityLog("Payment Added", `${guest.name} received ${amount} via ${method} by ${currentUserName}.`);
+      addActivityLog("Payment Added", `${guest.name} made a ${paymentType.toLowerCase()} payment of ${amount} via ${method}.`);
       addNotification("Payment completed", `${guest.name} made a payment of ${amount}.`, "success");
+      const receiptResponse = await api.get(`/receipts/guest/${guestId}`);
+      const receiptRecord = (receiptResponse.data || []).map(normalizeReceipt)[0] || null;
       await refreshData();
 
-      return { paymentRecord, receiptRecord: normalizeReceipt(receiptRecord) };
+      return { paymentRecord, receiptRecord };
     } catch (err) {
       console.warn("Unable to record payment", err);
       throw err;
     }
-  }, [addActivityLog, addNotification, guests, receipts, refreshData, settings.paymentMethods, settings.receiptFooter, user]);
+  }, [addActivityLog, addNotification, guests, refreshData, settings.paymentMethods]);
 
-  const completeCheckout = useCallback(async (guestId, options = {}) => {
-    const guest = guests.find((item) => item.id === guestId);
+  const completeCheckout = useCallback(async (guestId) => {
+    const guest = guests.find((item) => String(item.id) === String(guestId));
     if (!guest) {
       return { success: false, message: "Guest not found." };
     }
 
     try {
-      if (guest.remainingBalance > 0 && !options.managerApproved && settings.systemPreferences.requireManagerApprovalOnCheckout) {
-        return {
-          success: false,
-          message: "Checkout requires manager approval while the guest still has an outstanding balance.",
-        };
-      }
-
       const response = await api.post(`/guests/${guestId}/check-out`);
       const updatedGuest = normalizeGuest(response.data);
       setGuests((currentGuests) => currentGuests.map((item) => (item.id === guestId ? updatedGuest : item)));
@@ -614,7 +608,7 @@ export function GuestProvider({ children }) {
       console.warn("Unable to complete checkout", err);
       return { success: false, message: "Unable to complete checkout." };
     }
-  }, [addActivityLog, addNotification, guests, refreshData, settings.systemPreferences.requireManagerApprovalOnCheckout]);
+  }, [addActivityLog, addNotification, guests, refreshData]);
 
   const updateSettings = useCallback((updates = {}) => {
     setSettings((currentSettings) => ({
@@ -705,7 +699,7 @@ export function GuestProvider({ children }) {
       occupiedVillas: villas.filter((villa) => villa.status === "Occupied").length,
       availableVillas: villas.filter((villa) => villa.status === "Available").length,
       todaysCheckIns: todayCheckIns.length,
-      todaysCheckOuts: guests.filter((guest) => guest.checkOutDate === today).length,
+      todaysCheckOuts: guests.filter((guest) => guest.stayStatus !== "CHECKED_OUT" && guest.checkOutDate === today).length,
       todaysRevenue: todayCheckIns.reduce((total, guest) => total + guest.depositPaid, 0),
       monthlyRevenue,
       outstandingBalance: guests.reduce((total, guest) => total + guest.remainingBalance, 0),
@@ -722,20 +716,20 @@ export function GuestProvider({ children }) {
     const matches = [];
 
     guests.forEach((guest) => {
-      const haystack = [guest.name, guest.phone, guest.identityNumber, guest.villaNumber, guest.paymentStatus].filter(Boolean).join(" ").toLowerCase();
+      const haystack = [guest.name, guest.phone, guest.villaNumber].filter(Boolean).join(" ").toLowerCase();
       if (haystack.includes(query)) {
         matches.push({ type: "Guest", label: guest.name, detail: `${guest.villaNumber} • ${guest.phone}` });
       }
     });
 
-    receipts.forEach((receipt) => {
+    [].forEach((receipt) => {
       const haystack = [receipt.receiptNumber, receipt.guestName, receipt.villaNumber].filter(Boolean).join(" ").toLowerCase();
       if (haystack.includes(query)) {
         matches.push({ type: "Receipt", label: receipt.receiptNumber, detail: receipt.guestName });
       }
     });
 
-    payments.forEach((payment) => {
+    [].forEach((payment) => {
       const haystack = [payment.guestName, payment.method, payment.status].filter(Boolean).join(" ").toLowerCase();
       if (haystack.includes(query)) {
         matches.push({ type: "Payment", label: payment.guestName, detail: `${payment.method} • ${payment.amount}` });
@@ -750,7 +744,7 @@ export function GuestProvider({ children }) {
     });
 
     return matches.slice(0, 6);
-  }, [guests, payments, receipts, searchQuery, villas]);
+  }, [guests, searchQuery, villas]);
 
   const value = useMemo(
     () => ({
@@ -768,6 +762,7 @@ export function GuestProvider({ children }) {
       clearSelectedGuest,
       addGuest,
       updateGuest,
+      updateVilla,
       removeGuest,
       addPayment,
       completeCheckout,
@@ -783,7 +778,7 @@ export function GuestProvider({ children }) {
       refreshData,
       ...statistics,
     }),
-    [activityLogs, addActivityLog, addNotification, addGuest, addPayment, backupData, clearSelectedGuest, completeCheckout, dashboardSummary, error, guests, isLoading, notifications, payments, receipts, removeGuest, restoreBackup, searchQuery, searchResults, selectedGuest, selectGuest, settings, statistics, updateGuest, updateSettings, villas, refreshData],
+    [activityLogs, addActivityLog, addNotification, addGuest, addPayment, backupData, clearSelectedGuest, completeCheckout, dashboardSummary, error, guests, isLoading, notifications, payments, receipts, removeGuest, restoreBackup, searchQuery, searchResults, selectedGuest, selectGuest, settings, statistics, updateGuest, updateVilla, updateSettings, villas, refreshData],
   );
 
   return <GuestContext.Provider value={value}>{children}</GuestContext.Provider>;

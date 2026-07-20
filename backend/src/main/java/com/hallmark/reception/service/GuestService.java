@@ -12,5 +12,6 @@ public interface GuestService {
     Guest update(Long id, GuestRequestDto request);
     Guest checkIn(Long id, GuestRequestDto request);
     Guest checkOut(Long id);
+    void activateDueBookings();
     void delete(Long id);
 }

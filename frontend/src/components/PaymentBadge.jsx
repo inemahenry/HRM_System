@@ -1,6 +1,7 @@
 const paymentStyles = {
   paid: "border-emerald-100 bg-emerald-50 text-emerald-700",
   partial: "border-amber-100 bg-amber-50 text-amber-700",
+  due: "border-red-100 bg-red-50 text-red-700",
   unpaid: "border-red-100 bg-red-50 text-red-700",
 };
 

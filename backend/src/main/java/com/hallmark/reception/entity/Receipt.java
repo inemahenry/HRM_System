@@ -56,6 +56,8 @@ public class Receipt {
 
     private String paymentMethod;
 
+    private String paymentType;
+
     private String reference;
 
     private String paymentDuration;

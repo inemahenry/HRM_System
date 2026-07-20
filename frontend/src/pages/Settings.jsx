@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react';
-import { FaCog, FaSave, FaShieldAlt } from 'react-icons/fa';
+import { FaCog, FaSave } from 'react-icons/fa';
 import AppLayout from '../components/AppLayout';
 import PageHeader from '../components/PageHeader';
 import { useGuests } from '../hooks/useGuests';
@@ -13,7 +13,6 @@ export default function Settings() {
   const [currency, setCurrency] = useState(settings.currency || 'USD');
   const [activeMethods, setActiveMethods] = useState(settings.paymentMethods || paymentMethods);
   const [autoBackup, setAutoBackup] = useState(Boolean(settings.systemPreferences?.autoBackup));
-  const [managerApproval, setManagerApproval] = useState(Boolean(settings.systemPreferences?.requireManagerApprovalOnCheckout));
   const [showNotifications, setShowNotifications] = useState(Boolean(settings.systemPreferences?.showNotifications));
 
   const handleSave = () => {
@@ -24,7 +23,6 @@ export default function Settings() {
       paymentMethods: activeMethods,
       systemPreferences: {
         autoBackup,
-        requireManagerApprovalOnCheckout: managerApproval,
         showNotifications,
       },
     });
@@ -85,7 +83,6 @@ export default function Settings() {
             <div className="rounded-3xl border border-line bg-white p-4">
               <p className="text-sm font-semibold text-ink">System preferences</p>
               <label className="mt-3 flex items-center justify-between gap-3 text-sm text-muted"><span>Automatic backup</span><input type="checkbox" checked={autoBackup} onChange={() => setAutoBackup((value) => !value)} /></label>
-              <label className="mt-3 flex items-center justify-between gap-3 text-sm text-muted"><span>Manager approval for incomplete checkout</span><input type="checkbox" checked={managerApproval} onChange={() => setManagerApproval((value) => !value)} /></label>
               <label className="mt-3 flex items-center justify-between gap-3 text-sm text-muted"><span>Show notifications</span><input type="checkbox" checked={showNotifications} onChange={() => setShowNotifications((value) => !value)} /></label>
             </div>
             <button type="button" onClick={handleSave} className="inline-flex items-center gap-2 rounded-xl bg-hallmark px-4 py-3 text-sm font-semibold text-white">
@@ -111,12 +108,6 @@ export default function Settings() {
               <button type="button" onClick={backupData} className="inline-flex items-center gap-2 rounded-xl bg-hallmark px-3 py-2 text-sm font-semibold text-white">Backup now</button>
               <button type="button" onClick={handleRestore} className="inline-flex items-center gap-2 rounded-xl border border-line px-3 py-2 text-sm font-semibold text-ink">Restore</button>
             </div>
-          </div>
-          <div className="mt-6 rounded-3xl border border-line bg-white p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-ink">
-              <FaShieldAlt /> User management
-            </div>
-            <p className="mt-2 text-sm text-muted">Reception and manager roles are available from the Hallmark operations console.</p>
           </div>
         </aside>
       </section>

@@ -42,5 +42,17 @@ public class Villa {
 
     private String type;
 
+    private Integer occupancy;
+
+    private String rentStatus;
+
+    private String cleaningPaymentStatus;
+
+    private String cleaningDay;
+
+    private String assignedCleaners;
+
+    private java.time.LocalDate cleaningNextDueDate;
+
     private String notes;
 }

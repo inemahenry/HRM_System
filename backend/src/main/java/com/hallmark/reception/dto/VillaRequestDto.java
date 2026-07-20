@@ -19,5 +19,15 @@ public class VillaRequestDto {
 
     private String type;
 
+    private Integer occupancy;
+
+    private String rentStatus;
+
+    private String cleaningPaymentStatus;
+
+    private String cleaningDay;
+
+    private String assignedCleaners;
+
     private String notes;
 }

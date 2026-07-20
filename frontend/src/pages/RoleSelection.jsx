@@ -12,7 +12,7 @@ const roleOptions = [
   },
   {
     title: "Manager",
-    description: "Reports\nSettings\nUser Management",
+    description: "Settings\nUser Management",
     icon: FaShieldAlt,
     accent: "bg-[#f3e8ea]",
     disabled: true,

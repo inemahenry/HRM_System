@@ -1,20 +1,17 @@
 import {
-  FaChartBar,
   FaCog,
   FaFileInvoice,
   FaHome,
   FaHotel,
   FaMoneyBill,
   FaPlusCircle,
-  FaSignOutAlt,
   FaUsers,
 } from "react-icons/fa";
-import { NavLink, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { NavLink } from "react-router-dom";
 import HallmarkMark from "./HallmarkMark";
 
 const navigationItems = [
-  { label: "Dashboard", icon: FaHome, to: "/dashboard", end: true },
+  { label: "Home", icon: FaHome, to: "/dashboard", end: true },
   {
     label: "Guests",
     icon: FaUsers,
@@ -28,7 +25,6 @@ const navigationItems = [
   { label: "Payments", icon: FaMoneyBill, to: "/payments" },
   { label: "Receipts", icon: FaFileInvoice, to: "/receipts" },
   { label: "Villas", icon: FaHotel, to: "/villas" },
-  { label: "Reports", icon: FaChartBar, to: "/reports" },
   { label: "Settings", icon: FaCog, to: "/settings" },
 ];
 
@@ -40,16 +36,6 @@ const itemClassName = (isActive) =>
   }`;
 
 export default function Sidebar() {
-  const navigate = useNavigate();
-  const { logout, user } = useAuth();
-  const isManager = user?.role === "manager" || user?.role === "ROLE_MANAGER";
-  const visibleItems = navigationItems.filter((item) => item.label !== "Settings" || isManager);
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
-
   return (
     <aside className="flex h-screen w-20 shrink-0 flex-col overflow-y-auto bg-hallmark px-3 py-5 text-white shadow-[5px_0_22px_rgba(31,41,55,0.08)] lg:w-64 lg:px-4">
       <div className="flex items-center justify-center gap-3 px-0 pb-8 lg:justify-start lg:px-2">
@@ -68,7 +54,7 @@ export default function Sidebar() {
 
       <nav aria-label="Primary navigation">
         <ul className="space-y-1.5">
-          {visibleItems.map(({ label, icon: Icon, to, end, children }) => (
+          {navigationItems.map(({ label, icon: Icon, to, end, children }) => (
             <li key={label}>
               <NavLink
                 to={to}
@@ -106,17 +92,6 @@ export default function Sidebar() {
           ))}
         </ul>
       </nav>
-
-      <div className="mt-auto border-t border-white/15 pt-5">
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex w-full items-center justify-center gap-3 rounded-xl border-l-[3px] border-transparent px-2 py-3 text-sm font-medium text-white/90 transition duration-200 hover:bg-hallmark-deep hover:text-white lg:justify-start lg:px-3"
-        >
-          <FaSignOutAlt aria-hidden="true" className="text-base" />
-          <span className="hidden lg:inline">Logout</span>
-        </button>
-      </div>
     </aside>
   );
 }

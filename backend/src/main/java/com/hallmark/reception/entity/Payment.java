@@ -31,6 +31,9 @@ public class Payment {
     @Column(nullable = false)
     private String method;
 
+    @Column(nullable = false)
+    private String paymentType;
+
     private String reference;
 
     private String notes;

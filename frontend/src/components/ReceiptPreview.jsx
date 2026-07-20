@@ -54,10 +54,14 @@ export default function ReceiptPreview({ receipt, companyName = "Hallmark Reside
           <span className="text-muted">Payment method</span>
           <span className="font-semibold text-ink">{receipt.paymentMethod}</span>
         </div>
+        <div className="mt-3 flex items-center justify-between text-sm">
+          <span className="text-muted">Payment type</span>
+          <span className="font-semibold text-ink">{receipt.paymentType === "CLEANING" ? "Cleaning" : "Rent"}</span>
+        </div>
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-line bg-[#800C18]/5 p-4 text-sm text-muted">
-        <p>Receptionist: {receipt.receptionistName || "Admin"}</p>
+        <p>Receptionist: {receipt.receptionistName || "Reception Desk"}</p>
         <p>{receipt.companyFooter || "Thank you for staying with Hallmark Residences."}</p>
       </div>
 
@@ -66,7 +70,7 @@ export default function ReceiptPreview({ receipt, companyName = "Hallmark Reside
           <FaPrint /> Print
         </button>
         <button type="button" onClick={onDownload} className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2 text-sm font-semibold text-ink">
-          <FaDownload /> Download PDF
+          <FaDownload /> Reprint
         </button>
       </div>
     </div>

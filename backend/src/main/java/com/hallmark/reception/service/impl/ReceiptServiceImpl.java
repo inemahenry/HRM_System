@@ -27,18 +27,27 @@ public class ReceiptServiceImpl implements ReceiptService {
 
     @Override
     public List<Receipt> findAll() {
-        return receiptRepository.findAll();
+        return receiptRepository.findAll().stream()
+                .filter(receipt -> !"14".equals(receipt.getVillaNumber()))
+                .toList();
     }
 
     @Override
     public List<Receipt> findByGuestId(Long guestId) {
+        guestRepository.findById(guestId)
+                .filter(guest -> !"14".equals(guest.getVillaNumber()))
+                .orElseThrow(() -> new ResourceNotFoundException("Guest not found with id " + guestId));
         return receiptRepository.findByGuestIdOrderByIssuedAtDesc(guestId);
     }
 
     @Override
     public Receipt findById(Long id) {
-        return receiptRepository.findById(id)
+        Receipt receipt = receiptRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Receipt not found with id " + id));
+        if ("14".equals(receipt.getVillaNumber())) {
+            throw new ResourceNotFoundException("Receipt not found with id " + id);
+        }
+        return receipt;
     }
 
     @Override
@@ -63,6 +72,7 @@ public class ReceiptServiceImpl implements ReceiptService {
                 .dueDate(payment.getDueDate())
                 .receivedBy(currentUser != null ? currentUser.getFullName() : payment.getReceptionistName())
                 .paymentMethod(payment.getMethod())
+                .paymentType(payment.getPaymentType())
                 .reference(payment.getReference())
                 .paymentDuration(payment.getPaymentDuration())
                 .durationDays(payment.getDurationDays())
@@ -73,7 +83,11 @@ public class ReceiptServiceImpl implements ReceiptService {
 
     @Override
     public Receipt findByReceiptNumber(String receiptNumber) {
-        return receiptRepository.findByReceiptNumber(receiptNumber)
+        Receipt receipt = receiptRepository.findByReceiptNumber(receiptNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Receipt not found with number " + receiptNumber));
+        if ("14".equals(receipt.getVillaNumber())) {
+            throw new ResourceNotFoundException("Receipt not found with number " + receiptNumber);
+        }
+        return receipt;
     }
 }

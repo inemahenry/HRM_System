@@ -18,10 +18,10 @@ const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(amount) || 0);
 
 export default function CheckOuts() {
-  const { guests, updateGuest } = useGuests();
+  const { guests, completeCheckout } = useGuests();
   const today = toLocalDateKey();
   const dueToday = guests.filter(
-    (guest) => guest.checkOutDate === today && guest.stayStatus !== "Checked Out",
+    (guest) => guest.checkOutDate === today && guest.stayStatus === "OCCUPIED",
   );
 
   return (
@@ -69,7 +69,7 @@ export default function CheckOuts() {
                     <td className="px-6 py-4 text-right">
                       <button
                         type="button"
-                        onClick={() => updateGuest(guest.id, { stayStatus: "Checked Out" })}
+                        onClick={() => completeCheckout(guest.id)}
                         className="inline-flex h-10 items-center gap-2 rounded-xl bg-hallmark px-3 text-xs font-semibold text-white transition hover:bg-hallmark-deep focus:outline-none focus-visible:ring-2 focus-visible:ring-hallmark focus-visible:ring-offset-2"
                       >
                         <FaCheck aria-hidden="true" />

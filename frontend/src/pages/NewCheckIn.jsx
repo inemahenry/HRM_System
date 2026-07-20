@@ -13,32 +13,20 @@ const toLocalDateKey = () => {
   return `${year}-${month}-${day}`;
 };
 
-const getPaymentStatus = (roomPrice, depositPaid) => {
-  if (roomPrice > 0 && depositPaid >= roomPrice) return "Paid";
-  return depositPaid > 0 ? "Partial" : "Unpaid";
-};
-
 export default function NewCheckIn() {
   const navigate = useNavigate();
-  const { addGuest, villas } = useGuests();
+  const { addGuest, guests, villas } = useGuests();
   const availableVillas = villas.filter((villa) => villa.status === "Available");
 
-  const handleSaveGuest = (values) => {
-    const roomPrice = Number(values.roomPrice) || 0;
-    const depositPaid = Number(values.depositPaid) || 0;
+  const handleSaveGuest = async (values) => {
     const matchedVilla = villas.find((villa) => villa.number === values.villaNumber);
     const checkInDate = values.checkInDate || toLocalDateKey();
 
-    addGuest({
+    await addGuest({
       ...values,
       villaId: matchedVilla?.id || values.villaId,
       villaNumber: values.villaNumber,
       checkInDate,
-      roomPrice,
-      depositPaid,
-      remainingBalance: Math.max(roomPrice - depositPaid, 0),
-      paymentStatus: getPaymentStatus(roomPrice, depositPaid),
-      stayStatus: checkInDate <= toLocalDateKey() ? "Staying" : "Reserved",
     });
     navigate("/guests");
   };
@@ -63,12 +51,13 @@ export default function NewCheckIn() {
       <section className="mt-7 overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_8px_30px_rgba(31,41,55,0.055)]">
         <div className="flex flex-wrap items-center gap-3 border-b border-line bg-[#800C18]/[0.025] px-6 py-4 text-sm text-muted lg:px-8">
           <span className="flex size-9 items-center justify-center rounded-xl bg-white text-hallmark shadow-sm"><FaBed aria-hidden="true" /></span>
-          <span><strong className="font-semibold text-ink">{availableVillas.length}</strong> villas are currently available for assignment.</span>
+          <span><strong className="font-semibold text-ink">{availableVillas.length}</strong> villas are currently vacant. Select stay dates to see available villas.</span>
         </div>
         <GuestForm
           onSubmit={handleSaveGuest}
           onCancel={() => navigate("/guests")}
           villas={availableVillas}
+          guests={guests}
           submitLabel="Save Guest"
         />
       </section>

@@ -19,6 +19,9 @@ public class PaymentRequestDto {
     @NotBlank
     private String method;
 
+    @NotBlank
+    private String paymentType;
+
     private String reference;
 
     private String notes;

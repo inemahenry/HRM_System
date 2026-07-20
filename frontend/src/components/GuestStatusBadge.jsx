@@ -1,8 +1,11 @@
 const statusStyles = {
   reserved: "border-emerald-100 bg-emerald-50 text-emerald-700",
+  booked: "border-violet-100 bg-violet-50 text-violet-700",
   staying: "border-blue-100 bg-blue-50 text-blue-700",
+  occupied: "border-blue-100 bg-blue-50 text-blue-700",
   "checking out": "border-amber-100 bg-amber-50 text-amber-700",
   "checked out": "border-slate-200 bg-slate-100 text-slate-600",
+  checked_out: "border-slate-200 bg-slate-100 text-slate-600",
 };
 
 function getStatusKey(status) {

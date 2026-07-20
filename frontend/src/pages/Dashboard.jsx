@@ -1,100 +1,89 @@
-import { FaHome, FaMoneyCheckAlt, FaPlus, FaSearch, FaUser } from "react-icons/fa";
+import { FaBell, FaHome, FaMoneyCheckAlt, FaPlus, FaSignOutAlt } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
-import { useAuth } from "../context/AuthContext";
 import { useGuests } from "../hooks/useGuests";
 
-const quickActions = [
-  { title: "New Guest", icon: FaPlus, to: "/guests/new", state: { title: "New Guest", description: "Create a fresh stay record for a new arrival." } },
-  { title: "Record Payment", icon: FaMoneyCheckAlt, to: "/payments", state: { title: "Record Payment", description: "Capture a payment and issue a receipt." } },
-  { title: "Search Guest", icon: FaSearch, to: "/guests", state: { title: "Search Guest", description: "Locate an existing guest and review their stay." } },
+const cards = (summary) => [
+  ["Occupied villas", summary.occupiedVillas],
+  ["Vacant villas", summary.vacantVillas],
+  ["Booked villas", summary.bookedVillas],
+  ["Rent payments due", summary.rentPaymentsDue],
+  ["Cleaning payments due", summary.cleaningPaymentsDue],
+  ["Check-outs today", summary.guestsCheckingOutToday],
+  ["Check-outs this week", summary.guestsCheckingOutThisWeek],
+  ["Action required", summary.actionRequired],
 ];
 
 export default function Dashboard() {
-  const { user } = useAuth();
-  const { dashboardSummary, villas, isLoading } = useGuests();
-  const today = new Date().toLocaleDateString("en-US", {
+  const { dashboardSummary, isLoading } = useGuests();
+  const today = new Intl.DateTimeFormat("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
-  });
+  }).format(new Date());
 
   return (
-    <AppLayout title="Dashboard" eyebrow="RECEPTION DESK">
-      <div className="space-y-8">
-        <section className="rounded-[28px] border border-line bg-white p-7 shadow-[0_18px_44px_rgba(31,41,55,0.06)] sm:p-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-hallmark">Receptionist Dashboard</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink">Welcome, {user?.name || "Receptionist"}</h2>
-              <p className="mt-2 text-sm text-muted">{today}</p>
-            </div>
-            <div className="inline-flex items-center gap-3 rounded-2xl border border-line bg-canvas px-4 py-3 text-sm text-muted">
-              <FaUser className="text-hallmark" />
-              <span>Daily operations ready</span>
-            </div>
+    <AppLayout title="Home" eyebrow="RECEPTION">
+      <div className="space-y-7">
+        <section className="flex flex-col gap-4 rounded-[28px] border border-line bg-white p-7 shadow-[0_18px_44px_rgba(31,41,55,0.06)] sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-hallmark">Hallmark Residences</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink">Home</h2>
+            <p className="mt-2 text-sm text-muted">{today}</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link to="/guests/new" className="inline-flex items-center gap-2 rounded-xl bg-hallmark px-4 py-3 text-sm font-semibold text-white">
+              <FaPlus /> Check in guest
+            </Link>
+            <Link to="/payments" className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink">
+              <FaMoneyCheckAlt /> Record payment
+            </Link>
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-line bg-white p-7 shadow-[0_18px_44px_rgba(31,41,55,0.06)] sm:p-8">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {cards(dashboardSummary).map(([label, value]) => (
+            <article key={label} className="rounded-2xl border border-line bg-white p-5 shadow-[0_8px_30px_rgba(31,41,55,0.045)]">
+              <p className="text-sm text-muted">{label}</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-ink">{isLoading ? "–" : value || 0}</p>
+            </article>
+          ))}
+        </section>
+
+        <section className="rounded-[28px] border border-line bg-white p-7 shadow-[0_18px_44px_rgba(31,41,55,0.06)]">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-hallmark/10 p-3 text-hallmark">
-              <FaHome className="text-xl" />
-            </div>
+            <span className="flex size-11 items-center justify-center rounded-2xl bg-hallmark/10 text-hallmark"><FaBell /></span>
             <div>
-              <h3 className="text-xl font-semibold text-ink">Villa Summary</h3>
-              <p className="text-sm text-muted">Live occupancy overview from the Hallmark backend.</p>
+              <h3 className="text-xl font-semibold text-ink">Action required</h3>
+              <p className="text-sm text-muted">These reminders remain visible until the payment is recorded or the guest checks out.</p>
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {[
-              { label: "Total Villas", value: dashboardSummary.totalVillas ?? villas.length, tone: "bg-hallmark/10" },
-              { label: "Occupied", value: dashboardSummary.occupiedVillas ?? 0, tone: "bg-[#fff4f4]" },
-              { label: "Vacant", value: dashboardSummary.vacantVillas ?? 0, tone: "bg-[#f2fbf5]" },
-              { label: "Maintenance", value: dashboardSummary.maintenanceVillas ?? 0, tone: "bg-[#f6f6f6]" },
-            ].map((item) => (
-              <div key={item.label} className="rounded-[22px] border border-line bg-surface p-5 shadow-sm">
-                <p className="text-sm text-muted">{item.label}</p>
-                <div className={`mt-3 inline-flex rounded-2xl px-3 py-2 text-2xl font-semibold text-ink ${item.tone}`}>
-                  {isLoading ? "—" : item.value}
+          <div className="mt-5 space-y-3">
+            {dashboardSummary.reminders?.length ? dashboardSummary.reminders.map((reminder) => (
+              <article key={reminder.id} className={`rounded-2xl border px-4 py-4 ${reminder.overdue ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"}`}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold text-ink">{reminder.title}</p>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted">Due {reminder.dueDate}</span>
                 </div>
-              </div>
-            ))}
+                <p className="mt-1 text-sm text-muted">{reminder.message}</p>
+              </article>
+            )) : (
+              <div className="rounded-2xl border border-dashed border-line bg-canvas px-4 py-8 text-center text-sm text-muted">No action is required today.</div>
+            )}
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[28px] border border-line bg-white p-7 shadow-[0_18px_44px_rgba(31,41,55,0.06)] sm:p-8">
-            <h3 className="text-xl font-semibold text-ink">Upcoming check-outs</h3>
-            <p className="mt-2 text-sm text-muted">The next departures from the live reservations.</p>
-            <ul className="mt-6 space-y-3">
-              {(dashboardSummary.upcomingCheckouts || []).map((item) => (
-                <li key={item.id} className="rounded-2xl border border-line bg-canvas px-4 py-4 text-sm font-medium text-ink">
-                  • {item.guestName} • {item.villaNumber} • {item.checkOutDate}
-                </li>
-              ))}
-              {!dashboardSummary.upcomingCheckouts?.length && <li className="rounded-2xl border border-dashed border-line bg-canvas px-4 py-4 text-sm text-muted">No departures are scheduled right now.</li>}
-            </ul>
-          </div>
-
-          <div className="rounded-[28px] border border-line bg-white p-7 shadow-[0_18px_44px_rgba(31,41,55,0.06)] sm:p-8">
-            <h3 className="text-xl font-semibold text-ink">Payment reminders</h3>
-            <p className="mt-2 text-sm text-muted">Fast tasks for daily reception work.</p>
-            <div className="mt-6 space-y-3">
-              {(dashboardSummary.paymentReminders || []).map((item) => (
-                <div key={item.id} className="rounded-[22px] border border-line bg-surface px-4 py-4 text-left">
-                  <div className="flex items-center justify-between">
-                    <span className="text-base font-semibold text-ink">{item.guestName}</span>
-                    <span className="text-sm text-muted">{item.villaNumber}</span>
-                  </div>
-                  <p className="mt-2 text-sm text-muted">Outstanding balance: {item.amount}</p>
-                </div>
-              ))}
-              {!dashboardSummary.paymentReminders?.length && <div className="rounded-[22px] border border-dashed border-line bg-surface px-4 py-4 text-sm text-muted">No payment reminders currently.</div>}
-            </div>
-          </div>
+        <section className="grid gap-4 md:grid-cols-2">
+          <Link to="/villas" className="flex items-center gap-3 rounded-2xl border border-line bg-white p-5 text-ink shadow-sm transition hover:border-hallmark/30">
+            <FaHome className="text-hallmark" />
+            <span><span className="block font-semibold">Villas</span><span className="text-sm text-muted">View the current rentable villa register.</span></span>
+          </Link>
+          <Link to="/guests/checkouts" className="flex items-center gap-3 rounded-2xl border border-line bg-white p-5 text-ink shadow-sm transition hover:border-hallmark/30">
+            <FaSignOutAlt className="text-hallmark" />
+            <span><span className="block font-semibold">Check-outs</span><span className="text-sm text-muted">Complete scheduled guest departures.</span></span>
+          </Link>
         </section>
       </div>
     </AppLayout>
